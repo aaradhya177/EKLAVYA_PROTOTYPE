@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.career import models as career_models  # noqa: F401
 from app.core import database
 from app.core.database import Base
 from app.injury import models as injury_models  # noqa: F401
