@@ -16,7 +16,7 @@ from app.users.models import User
 
 async def _create_athlete(client, name: str) -> dict:
     response = await client.post(
-        "/athletes/",
+        "/api/v1/uadp/athletes/",
         json={
             "name": name,
             "dob": "2000-01-01",

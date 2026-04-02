@@ -12,7 +12,7 @@ from app.core.responses import error_response
 from app.uadp.models import EventLog, FeatureSnapshot
 from app.uadp.service import has_active_consent
 
-ATHLETE_RESOURCE_PATTERN = re.compile(r"^/athletes/(?P<athlete_id>[^/]+)/(events|features)$")
+ATHLETE_RESOURCE_PATTERN = re.compile(r"^(/api/v1/uadp)?/athletes/(?P<athlete_id>[^/]+)/(events|features)$")
 RESTRICTED_CATEGORIES = {"health", "financial"}
 
 

@@ -12,7 +12,7 @@ from app.users.models import User, UserRole
 
 async def _create_athlete(client, name: str, tier: str = "national") -> dict:
     response = await client.post(
-        "/athletes/",
+        "/api/v1/uadp/athletes/",
         json={
             "name": name,
             "dob": "2002-03-10",
@@ -62,7 +62,7 @@ async def test_talent_signal_detection_with_fixture_performance_data(client):
     created = weekly_talent_signal_detection.run()
     assert created >= 1
 
-    signal_response = await client.get(f"/career/signals/{athlete['id']}")
+    signal_response = await client.get(f"/api/v1/career/signals/{athlete['id']}")
     signal = signal_response.json()["data"]
     assert signal["signal_type"] == "breakthrough"
     assert signal["evidence"][0]["change_percent"] == 20.0
@@ -73,7 +73,7 @@ async def test_plan_date_overlap_validation(client):
     coach_id = await _coach_id()
 
     await client.post(
-        "/career/goals/",
+        "/api/v1/career/goals/",
         json={
             "athlete_id": athlete["id"],
             "goal_type": "peak_event",
@@ -84,7 +84,7 @@ async def test_plan_date_overlap_validation(client):
     )
 
     response = await client.post(
-        "/career/plans/",
+        "/api/v1/career/plans/",
         json={
             "athlete_id": athlete["id"],
             "coach_id": coach_id,
@@ -119,7 +119,7 @@ async def test_weekly_load_target_computation_from_periodization_blocks(client):
     coach_id = await _coach_id()
 
     await client.post(
-        "/career/goals/",
+        "/api/v1/career/goals/",
         json={
             "athlete_id": athlete["id"],
             "goal_type": "peak_event",
@@ -130,7 +130,7 @@ async def test_weekly_load_target_computation_from_periodization_blocks(client):
     )
 
     create_response = await client.post(
-        "/career/plans/",
+        "/api/v1/career/plans/",
         json={
             "athlete_id": athlete["id"],
             "coach_id": coach_id,

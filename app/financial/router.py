@@ -1,11 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.models import User
+from app.core.auth import get_current_user, require_athlete_access
 from app.core.database import get_db_session
 from app.core.responses import success_response
-from app.financial.schemas import ExpenseRecordCreate, ExpenseRecordRead, FinancialSummaryRead, GrantRecordRead, IncomeRecordCreate, IncomeRecordRead, CashflowForecastRead
+from app.financial.schemas import CashflowForecastRead, ExpenseRecordCreate, ExpenseRecordRead, FinancialSummaryRead, GrantRecordRead, IncomeRecordCreate, IncomeRecordRead
 from app.financial.service import (
     compute_financial_summary,
     create_expense_record,
@@ -18,26 +20,51 @@ from app.financial.service import (
 router = APIRouter(tags=["financial"])
 
 
-@router.post("/financial/income/")
-async def log_income(payload: IncomeRecordCreate, session: AsyncSession = Depends(get_db_session)):
+@router.post("/income/")
+async def log_income(
+    request: Request,
+    payload: IncomeRecordCreate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    await require_athlete_access(payload.athlete_id, session, current_user)
     record = await create_income_record(session, payload)
     return success_response(IncomeRecordRead.model_validate(record).model_dump(mode="json"), "Income record created")
 
 
-@router.post("/financial/expenses/")
-async def log_expense(payload: ExpenseRecordCreate, session: AsyncSession = Depends(get_db_session)):
+@router.post("/expenses/")
+async def log_expense(
+    request: Request,
+    payload: ExpenseRecordCreate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    await require_athlete_access(payload.athlete_id, session, current_user)
     record = await create_expense_record(session, payload)
     return success_response(ExpenseRecordRead.model_validate(record).model_dump(mode="json"), "Expense record created")
 
 
-@router.get("/financial/summary/{athlete_id}/{fiscal_year}")
-async def annual_summary(athlete_id: UUID, fiscal_year: str, session: AsyncSession = Depends(get_db_session)):
+@router.get("/summary/{athlete_id}/{fiscal_year}")
+async def annual_summary(
+    request: Request,
+    athlete_id: UUID,
+    fiscal_year: str,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    await require_athlete_access(athlete_id, session, current_user)
     summary = await compute_financial_summary(session, athlete_id, fiscal_year)
     return success_response(FinancialSummaryRead.model_validate(summary).model_dump(mode="json"), "Financial summary fetched")
 
 
-@router.get("/financial/forecast/{athlete_id}")
-async def cashflow_forecast(athlete_id: UUID, session: AsyncSession = Depends(get_db_session)):
+@router.get("/forecast/{athlete_id}")
+async def cashflow_forecast(
+    request: Request,
+    athlete_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    await require_athlete_access(athlete_id, session, current_user)
     forecast = await get_latest_forecast(session, athlete_id, months_ahead=12)
     return success_response(
         [CashflowForecastRead.model_validate(row).model_dump(mode="json") for row in forecast],
@@ -45,14 +72,26 @@ async def cashflow_forecast(athlete_id: UUID, session: AsyncSession = Depends(ge
     )
 
 
-@router.get("/financial/grants/eligible/{athlete_id}")
-async def grant_eligibility(athlete_id: UUID, session: AsyncSession = Depends(get_db_session)):
+@router.get("/grants/eligible/{athlete_id}")
+async def grant_eligibility(
+    request: Request,
+    athlete_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    await require_athlete_access(athlete_id, session, current_user)
     grants = await eligible_grants(session, athlete_id)
     return success_response(grants, "Grant eligibility fetched")
 
 
-@router.get("/financial/grants/{athlete_id}")
-async def grant_records(athlete_id: UUID, session: AsyncSession = Depends(get_db_session)):
+@router.get("/grants/{athlete_id}")
+async def grant_records(
+    request: Request,
+    athlete_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    await require_athlete_access(athlete_id, session, current_user)
     records = await list_grants(session, athlete_id)
     return success_response(
         [GrantRecordRead.model_validate(record).model_dump(mode="json") for record in records],

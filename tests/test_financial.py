@@ -13,7 +13,7 @@ from app.uadp.models import ConsentLedger, DataCategory
 
 async def _create_athlete(client, name: str, tier: str = "national", state: str = "Haryana") -> dict:
     response = await client.post(
-        "/athletes/",
+        "/api/v1/uadp/athletes/",
         json={
             "name": name,
             "dob": "2005-01-01",
@@ -59,7 +59,7 @@ async def test_financial_summary_aggregation(client):
     await _set_financial_consent(athlete["id"], True)
 
     await client.post(
-        "/financial/income/",
+        "/api/v1/financial/income/",
         json={
             "athlete_id": athlete["id"],
             "source_type": "sponsorship",
@@ -72,7 +72,7 @@ async def test_financial_summary_aggregation(client):
         },
     )
     await client.post(
-        "/financial/expenses/",
+        "/api/v1/financial/expenses/",
         json={
             "athlete_id": athlete["id"],
             "category": "travel",
@@ -83,7 +83,7 @@ async def test_financial_summary_aggregation(client):
         },
     )
 
-    response = await client.get(f"/financial/summary/{athlete['id']}/2024-25")
+    response = await client.get(f"/api/v1/financial/summary/{athlete['id']}/2024-25")
     summary = response.json()["data"]
     assert summary["total_income"] == "100000.00"
     assert summary["total_expense"] == "25000.00"
@@ -95,7 +95,7 @@ async def test_cashflow_forecast_with_known_fixtures(client):
     await _set_financial_consent(athlete["id"], True)
 
     await client.post(
-        "/financial/income/",
+        "/api/v1/financial/income/",
         json={
             "athlete_id": athlete["id"],
             "source_type": "sponsorship",
@@ -107,7 +107,7 @@ async def test_cashflow_forecast_with_known_fixtures(client):
         },
     )
     await client.post(
-        "/financial/expenses/",
+        "/api/v1/financial/expenses/",
         json={
             "athlete_id": athlete["id"],
             "category": "coaching",
@@ -118,7 +118,7 @@ async def test_cashflow_forecast_with_known_fixtures(client):
     )
 
     assert compute_cashflow_forecast.run(athlete["id"], 12) == 12
-    response = await client.get(f"/financial/forecast/{athlete['id']}")
+    response = await client.get(f"/api/v1/financial/forecast/{athlete['id']}")
     rows = response.json()["data"]
     assert len(rows) == 12
     assert rows[0]["projected_income"] == "10800.00"
@@ -153,7 +153,7 @@ async def test_grant_eligibility_rules_from_yaml_config(client):
         )
         await session.commit()
 
-    eligible_response = await client.get(f"/financial/grants/eligible/{athlete['id']}")
+    eligible_response = await client.get(f"/api/v1/financial/grants/eligible/{athlete['id']}")
     schemes = {item["scheme_name"] for item in eligible_response.json()["data"]}
     assert "TOPS" in schemes
     assert "HaryanaStateSupport" in schemes
@@ -163,6 +163,6 @@ async def test_http_451_when_financial_consent_revoked(client):
     athlete = await _create_athlete(client, "Consent Athlete")
     await _set_financial_consent(athlete["id"], False)
 
-    response = await client.get(f"/financial/summary/{athlete['id']}/2024-25")
+    response = await client.get(f"/api/v1/financial/summary/{athlete['id']}/2024-25")
     assert response.status_code == 451
     assert response.json()["message"] == "Data access restricted under DPDP Act"

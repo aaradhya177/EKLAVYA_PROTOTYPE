@@ -5,7 +5,7 @@ from app.performance.tasks import compute_performance_indices
 
 async def _create_athlete(client, name: str, tier: str = "national") -> dict:
     response = await client.post(
-        "/athletes/",
+        "/api/v1/uadp/athletes/",
         json={
             "name": name,
             "dob": "2001-01-01",
@@ -28,7 +28,7 @@ async def _create_closed_session(
 ):
     start_time = end_time - timedelta(minutes=duration_min)
     response = await client.post(
-        "/sessions/",
+        "/api/v1/performance/sessions/",
         json={
             "athlete_id": athlete_id,
             "sport_id": sport_id,
@@ -69,7 +69,7 @@ async def test_acwr_computation_with_known_fixture_data(client):
 
     assert compute_performance_indices.run(last_session_id) == 3
 
-    summary_response = await client.get(f"/performance/{athlete['id']}/summary")
+    summary_response = await client.get(f"/api/v1/performance/summary/{athlete['id']}")
     summary_items = {item["index_name"]: item for item in summary_response.json()["data"]}
     assert summary_items["acwr"]["value"] == 2.0
 
@@ -102,9 +102,9 @@ async def test_percentile_ranking_across_athletes(client):
     for session_id in last_session_ids.values():
         compute_performance_indices.run(session_id)
 
-    high = {item["index_name"]: item for item in (await client.get(f"/performance/{athlete_high['id']}/summary")).json()["data"]}
-    mid = {item["index_name"]: item for item in (await client.get(f"/performance/{athlete_mid['id']}/summary")).json()["data"]}
-    low = {item["index_name"]: item for item in (await client.get(f"/performance/{athlete_low['id']}/summary")).json()["data"]}
+    high = {item["index_name"]: item for item in (await client.get(f"/api/v1/performance/summary/{athlete_high['id']}")).json()["data"]}
+    mid = {item["index_name"]: item for item in (await client.get(f"/api/v1/performance/summary/{athlete_mid['id']}")).json()["data"]}
+    low = {item["index_name"]: item for item in (await client.get(f"/api/v1/performance/summary/{athlete_low['id']}")).json()["data"]}
 
     assert round(high["acwr"]["percentile_in_sport"], 2) == 83.33
     assert round(mid["acwr"]["percentile_in_sport"], 2) == 50.0
@@ -138,7 +138,7 @@ async def test_alert_threshold_logic(client):
 
     compute_performance_indices.run(last_session_id)
 
-    alerts_response = await client.get(f"/performance/{athlete['id']}/alerts")
+    alerts_response = await client.get(f"/api/v1/performance/alerts/{athlete['id']}")
     alerts = alerts_response.json()["data"]
     assert len(alerts) == 1
     assert alerts[0]["index_name"] == "acwr"
