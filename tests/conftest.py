@@ -1,3 +1,5 @@
+pytest_plugins = ["app.seed.conftest"]
+
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from uuid import uuid4
