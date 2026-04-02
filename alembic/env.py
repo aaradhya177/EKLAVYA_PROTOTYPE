@@ -4,7 +4,10 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.database import Base
+from app.injury import models as injury_models  # noqa: F401
+from app.performance import models as performance_models  # noqa: F401
 from app.uadp import models  # noqa: F401
+from app.users import models as user_models  # noqa: F401
 
 config = context.config
 

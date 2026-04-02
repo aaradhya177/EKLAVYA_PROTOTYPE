@@ -5,8 +5,11 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core import database
 from app.core.database import Base
+from app.injury import models as injury_models  # noqa: F401
 from app.main import create_app
+from app.performance import models as performance_models  # noqa: F401
 from app.uadp.models import Sport, SportCategory
+from app.users.models import User, UserRole
 
 
 @pytest.fixture()
@@ -18,6 +21,8 @@ async def client(tmp_path) -> AsyncGenerator[AsyncClient, None]:
         await conn.run_sync(Base.metadata.create_all)
 
     async with database.AsyncSessionLocal() as session:
+        coach = User(name="Coach Dev", role=UserRole.coach)
+        admin = User(name="Fed Admin", role=UserRole.federation_admin)
         session.add(
             Sport(
                 name="Athletics",
@@ -25,6 +30,8 @@ async def client(tmp_path) -> AsyncGenerator[AsyncClient, None]:
                 ontology_tags={"discipline": "track"},
             )
         )
+        session.add(coach)
+        session.add(admin)
         await session.commit()
 
     app = create_app()
