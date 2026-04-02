@@ -1,0 +1,25 @@
+forecast_growth_rates:
+  prize_money: 0.05
+  sponsorship: 0.08
+  government_grant: 0.02
+  appearance_fee: 0.04
+  other: 0.00
+
+grant_schemes:
+  TOPS:
+    min_tiers: ["national", "elite"]
+    min_percentile: 80
+    min_age: 16
+    max_age: 40
+    eligible_sports: ["*"]
+  KheloIndiaYouthGames:
+    min_tiers: ["grassroots", "state"]
+    min_age: 12
+    max_age: 21
+    eligible_sports: ["*"]
+  HaryanaStateSupport:
+    states: ["Haryana"]
+    min_tiers: ["state", "national", "elite"]
+    min_age: 14
+    max_age: 35
+    eligible_sports: ["*"]

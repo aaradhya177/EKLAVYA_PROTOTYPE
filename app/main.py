@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from app.career.router import router as career_router
 from app.core.consent import ConsentEnforcementMiddleware
 from app.core.responses import error_response
+from app.financial.router import router as financial_router
 from app.injury.router import router as injury_router
 from app.performance.router import router as performance_router
 from app.uadp.router import router as uadp_router
@@ -17,6 +18,7 @@ def create_app() -> FastAPI:
     app.include_router(performance_router, prefix="")
     app.include_router(injury_router, prefix="")
     app.include_router(career_router, prefix="")
+    app.include_router(financial_router, prefix="")
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
