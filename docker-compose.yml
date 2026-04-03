@@ -9,6 +9,7 @@ services:
       - models_data:/app/models
     depends_on:
       - postgres
+      - minio
       - redis
 
   worker:
@@ -19,6 +20,7 @@ services:
       - models_data:/app/models
     depends_on:
       - postgres
+      - minio
       - redis
 
   beat:
@@ -29,6 +31,7 @@ services:
       - models_data:/app/models
     depends_on:
       - postgres
+      - minio
       - redis
 
   postgres:
@@ -44,6 +47,30 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: athleteos
+      MINIO_ROOT_PASSWORD: athleteos123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio_create_bucket:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 athleteos athleteos123 &&
+      /usr/bin/mc mb --ignore-existing local/athleteos
+      "
+    profiles:
+      - "storage"
 
   flower:
     build: .
@@ -67,3 +94,4 @@ services:
 
 volumes:
   models_data:
+  minio_data:

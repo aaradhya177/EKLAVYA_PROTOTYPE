@@ -38,6 +38,13 @@
 | `GET` | `/api/v1/financial/forecast/{athlete_id}` | `own athlete / assigned coach / admin` | Fetch a 12-month cashflow forecast. |
 | `GET` | `/api/v1/financial/grants/{athlete_id}` | `own athlete / assigned coach / admin` | List grant records for an athlete. |
 | `GET` | `/api/v1/financial/grants/eligible/{athlete_id}` | `own athlete / assigned coach / admin` | Return eligible grant schemes from YAML rules. |
+| `POST` | `/api/v1/files/upload-url` | `own athlete / assigned coach / admin` | Create a pending file record and return a presigned upload URL. |
+| `POST` | `/api/v1/files/{file_id}/confirm` | `uploader / athlete / admin` | Confirm a direct upload and queue file processing. |
+| `GET` | `/api/v1/files/{athlete_id}/` | `authenticated` | List athlete files filtered by the requester’s access level. |
+| `GET` | `/api/v1/files/{file_id}/download-url` | `authenticated with file access` | Generate a presigned download URL for a file. |
+| `DELETE` | `/api/v1/files/{file_id}/` | `uploader / athlete / admin` | Soft-delete a file record. |
+| `PUT` | `/api/v1/files/{file_id}/tags` | `uploader / athlete / admin` | Replace file tags. |
+| `GET` | `/api/v1/files/{file_id}/status` | `authenticated with file access` | Fetch processing status and metadata for a file. |
 | `POST` | `/api/v1/ml/train/injury` | `sys_admin` | Queue retraining of the injury risk model. |
 | `POST` | `/api/v1/ml/train/performance` | `sys_admin` | Queue retraining of per-sport performance forecasting models. |
 | `GET` | `/api/v1/ml/models/` | `authenticated` | List registered ML models and their metrics. |

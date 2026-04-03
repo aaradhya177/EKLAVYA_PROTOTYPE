@@ -1,6 +1,7 @@
 pytest_plugins = ["app.seed.conftest"]
 
 from collections.abc import AsyncGenerator
+import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from app.core.celery_app import celery_app
 from app.core.database import Base
 from app.core.redis_client import reset_redis_client
 from app.financial import models as financial_models  # noqa: F401
+from app.files import models as files_models  # noqa: F401
 from app.injury import models as injury_models  # noqa: F401
 from app.main import create_app
 from app.ml import models as ml_models  # noqa: F401
@@ -21,7 +23,7 @@ from app.performance import models as performance_models  # noqa: F401
 from app.uadp.models import Sport, SportCategory
 from app.users.models import User, UserRole
 
-TEST_DB_DIR = Path("test_dbs")
+TEST_DB_DIR = Path(os.environ.get("TEMP", ".")) / "athleteos-tests"
 TEST_DB_DIR.mkdir(exist_ok=True)
 
 

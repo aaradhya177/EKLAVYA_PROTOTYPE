@@ -17,6 +17,7 @@ from app.core.consent import ConsentEnforcementMiddleware
 from app.core.redis_client import get_redis_client
 from app.core.responses import error_response, success_response
 from app.financial.router import router as financial_router
+from app.files.router import router as files_router
 from app.integrations.competition_feed import router as competition_feed_router
 from app.integrations.sai_sync import router as sai_sync_router
 from app.injury.router import router as injury_router
@@ -77,6 +78,7 @@ def create_gateway_app() -> FastAPI:
     app.include_router(injury_router, prefix="/api/v1/injury")
     app.include_router(career_router, prefix="/api/v1/career")
     app.include_router(financial_router, prefix="/api/v1/financial")
+    app.include_router(files_router, prefix="/api/v1/files")
     app.include_router(ml_router, prefix="/api/v1/ml")
     app.include_router(auth_router, prefix="/api/v1/auth")
     app.include_router(sai_sync_router, prefix="/api/v1/integrations")

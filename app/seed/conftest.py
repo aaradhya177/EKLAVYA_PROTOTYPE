@@ -13,6 +13,7 @@ from app.auth.service import create_access_token
 from app.career import models as career_models  # noqa: F401
 from app.core.database import Base
 from app.financial import models as financial_models  # noqa: F401
+from app.files import models as files_models  # noqa: F401
 from app.injury import models as injury_models  # noqa: F401
 from app.ml import models as ml_models  # noqa: F401
 from app.performance import models as performance_models  # noqa: F401
