@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.injury.engine import RiskEngine
 from app.injury.ml.predictor import InjuryMLPredictor
 from app.injury.models import InjuryRecord, RiskLevel, RiskScore
+from app.ml.base import ModelRegistry
 from app.injury.schemas import InjuryRecordCreate
 from app.performance.models import SessionLog
 from app.uadp.models import Athlete
@@ -77,15 +78,21 @@ async def get_latest_risk_score(session: AsyncSession, athlete_id: UUID) -> Risk
 
 async def compute_current_risk_score(
     session: AsyncSession,
-    athlete_id: UUID,
+    athlete_id: UUID | str,
     model_path: str | Path | None = None,
 ) -> RiskScore:
+    athlete_id = UUID(str(athlete_id))
     await _get_athlete_or_404(session, athlete_id)
     engine = RiskEngine(session)
     predictor = InjuryMLPredictor()
-    predictor.load_model(model_path or Path(__file__).parent / "ml" / "injury_model.pkl")
+    registry = ModelRegistry()
+    active_record = await registry.get_record("injury_risk")
+    if active_record is not None:
+        await predictor.load_active_model()
+    else:
+        predictor.load_model(model_path or Path(__file__).parent / "ml" / "injury_model.pkl")
     evaluation = await engine.evaluate(athlete_id)
-    feature_vector = await engine.build_feature_vector(athlete_id)
+    feature_vector = await engine.build_ml_feature_vector(athlete_id)
     predicted_score = predictor.predict({**feature_vector, "_fallback_score": evaluation.score})
     score = min(max(float(predicted_score), 0.0), 1.0)
 
@@ -95,7 +102,7 @@ async def compute_current_risk_score(
         risk_level=evaluation.risk_level if predictor.model is None else engine._risk_level(score),
         contributing_factors=evaluation.contributing_factors,
         computed_at=_utcnow(),
-        model_version=evaluation.model_version if predictor.model is None else "ml_model_v1",
+        model_version=evaluation.model_version if predictor.model is None else (active_record.version if active_record else "ml_model_v1"),
     )
     session.add(risk_score)
     await session.commit()
@@ -126,14 +133,18 @@ async def list_high_risk_athletes(session: AsyncSession) -> list[dict]:
 
 
 async def recompute_recent_active_athletes(session: AsyncSession) -> int:
-    now = _utcnow()
-    stmt = select(distinct(SessionLog.athlete_id)).where(
-        SessionLog.end_time.is_not(None),
-        SessionLog.end_time >= now - timedelta(hours=48),
-    )
-    athlete_ids = [item for item in (await session.execute(stmt)).scalars().all()]
+    athlete_ids = await recent_active_athlete_ids(session)
     updated = 0
     for athlete_id in athlete_ids:
         await compute_current_risk_score(session, athlete_id)
         updated += 1
     return updated
+
+
+async def recent_active_athlete_ids(session: AsyncSession) -> list[UUID]:
+    now = _utcnow()
+    stmt = select(distinct(SessionLog.athlete_id)).where(
+        SessionLog.end_time.is_not(None),
+        SessionLog.end_time >= now - timedelta(hours=48),
+    )
+    return [item for item in (await session.execute(stmt)).scalars().all()]

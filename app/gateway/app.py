@@ -20,6 +20,7 @@ from app.financial.router import router as financial_router
 from app.integrations.competition_feed import router as competition_feed_router
 from app.integrations.sai_sync import router as sai_sync_router
 from app.injury.router import router as injury_router
+from app.ml.router import router as ml_router
 from app.performance.router import router as performance_router
 from app.uadp.router import router as uadp_router
 
@@ -76,6 +77,7 @@ def create_gateway_app() -> FastAPI:
     app.include_router(injury_router, prefix="/api/v1/injury")
     app.include_router(career_router, prefix="/api/v1/career")
     app.include_router(financial_router, prefix="/api/v1/financial")
+    app.include_router(ml_router, prefix="/api/v1/ml")
     app.include_router(auth_router, prefix="/api/v1/auth")
     app.include_router(sai_sync_router, prefix="/api/v1/integrations")
     app.include_router(competition_feed_router, prefix="/api/v1/integrations")

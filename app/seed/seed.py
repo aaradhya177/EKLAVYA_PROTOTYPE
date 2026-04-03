@@ -396,6 +396,10 @@ async def _seed_injuries(session: AsyncSession, athletes: list[tuple[Athlete, Us
                 sport.name if sport else "Athletics",
                 seed=athlete_index * 17 + injury_index,
             )
+            if athlete_index <= 4 and injury_index == 1:
+                occurred_at = _utcnow() - timedelta(days=7 + athlete_index * 6)
+                payload["occurred_at"] = occurred_at
+                payload["returned_at"] = occurred_at + timedelta(days=14) if athlete_index % 2 == 0 else None
             payload["reported_by"] = coach.id if injury_index % 2 == 0 else athlete.id
             session.add(InjuryRecord(**payload))
             stats.injuries += 1

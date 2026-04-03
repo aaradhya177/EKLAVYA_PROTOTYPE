@@ -16,6 +16,7 @@ from app.core.redis_client import reset_redis_client
 from app.financial import models as financial_models  # noqa: F401
 from app.injury import models as injury_models  # noqa: F401
 from app.main import create_app
+from app.ml import models as ml_models  # noqa: F401
 from app.performance import models as performance_models  # noqa: F401
 from app.uadp.models import Sport, SportCategory
 from app.users.models import User, UserRole

@@ -2,11 +2,21 @@ import pickle
 from pathlib import Path
 from typing import Any
 
+from app.ml.base import ModelRegistry
+
 
 class InjuryMLPredictor:
     def __init__(self):
         self.model: Any | None = None
         self.model_path: Path | None = None
+        self.registry = ModelRegistry()
+        self.model_name = "injury_risk"
+        self.model_source = "fallback"
+
+    async def load_active_model(self):
+        self.model = await self.registry.load(self.model_name)
+        self.model_source = "registry" if self.model is not None else "fallback"
+        return self.model
 
     def load_model(self, path: str | Path):
         model_path = Path(path)
@@ -32,17 +42,17 @@ class InjuryMLPredictor:
         if self.model is None:
             return fallback_score
 
-        filtered = {
-            key: value
-            for key, value in feature_vector.items()
-            if not key.startswith("_")
-        }
+        filtered = {key: value for key, value in feature_vector.items() if not key.startswith("_")}
 
         if hasattr(self.model, "predict_proba"):
-            return float(self.model.predict_proba([filtered])[0][1])
+            import pandas as pd
+
+            return float(self.model.predict_proba(pd.DataFrame([filtered]))[0][1])
 
         if hasattr(self.model, "predict"):
-            prediction = self.model.predict([filtered])[0]
+            import pandas as pd
+
+            prediction = self.model.predict(pd.DataFrame([filtered]))[0]
             return float(prediction)
 
         try:

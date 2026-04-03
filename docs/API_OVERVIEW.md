@@ -38,5 +38,9 @@
 | `GET` | `/api/v1/financial/forecast/{athlete_id}` | `own athlete / assigned coach / admin` | Fetch a 12-month cashflow forecast. |
 | `GET` | `/api/v1/financial/grants/{athlete_id}` | `own athlete / assigned coach / admin` | List grant records for an athlete. |
 | `GET` | `/api/v1/financial/grants/eligible/{athlete_id}` | `own athlete / assigned coach / admin` | Return eligible grant schemes from YAML rules. |
+| `POST` | `/api/v1/ml/train/injury` | `sys_admin` | Queue retraining of the injury risk model. |
+| `POST` | `/api/v1/ml/train/performance` | `sys_admin` | Queue retraining of per-sport performance forecasting models. |
+| `GET` | `/api/v1/ml/models/` | `authenticated` | List registered ML models and their metrics. |
+| `GET` | `/api/v1/ml/injury/explain/{athlete_id}` | `own athlete / assigned coach / admin` | Return SHAP-based or rule-based injury risk explanations. |
 | `POST` | `/api/v1/integrations/sai-sync` | `authenticated` | Accept an SAI athlete export payload and log it to the event stream. |
 | `POST` | `/api/v1/integrations/competition-feed` | `authenticated` | Accept a competition result webhook payload and log it to the event stream. |

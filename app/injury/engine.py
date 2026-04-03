@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.injury.models import InjuryRecord, RiskLevel, RiskScore
 from app.performance.models import PerformanceIndex, SessionLog
-from app.uadp.models import Athlete, FeatureSnapshot
+from app.uadp.models import Athlete, FeatureSnapshot, Sport
 
 
 def _ensure_utc(value: datetime) -> datetime:
@@ -58,6 +58,18 @@ class RiskEngine:
         snapshot = (await self.session.execute(stmt)).scalars().first()
         return snapshot.value if snapshot else None
 
+    async def _latest_feature_value(self, athlete_id: UUID, feature_name: str) -> float | None:
+        stmt = (
+            select(FeatureSnapshot)
+            .where(
+                FeatureSnapshot.athlete_id == athlete_id,
+                FeatureSnapshot.feature_name == feature_name,
+            )
+            .order_by(FeatureSnapshot.computed_at.desc(), FeatureSnapshot.id.desc())
+        )
+        snapshot = (await self.session.execute(stmt)).scalars().first()
+        return snapshot.value if snapshot else None
+
     async def _high_rpe_session_count(self, athlete_id: UUID, now: datetime) -> int:
         stmt = select(SessionLog).where(
             SessionLog.athlete_id == athlete_id,
@@ -95,6 +107,28 @@ class RiskEngine:
                 return offset
         return 31
 
+    async def _avg_rpe(self, athlete_id: UUID, now: datetime, days: int) -> float:
+        stmt = select(SessionLog).where(
+            SessionLog.athlete_id == athlete_id,
+            SessionLog.end_time.is_not(None),
+            SessionLog.end_time >= now - timedelta(days=days),
+            SessionLog.end_time <= now,
+            SessionLog.rpe.is_not(None),
+        )
+        sessions = list((await self.session.execute(stmt)).scalars().all())
+        if not sessions:
+            return 0.0
+        return sum(float(item.rpe or 0) for item in sessions) / len(sessions)
+
+    async def _sessions_per_week(self, athlete_id: UUID, now: datetime) -> float:
+        stmt = select(SessionLog).where(
+            SessionLog.athlete_id == athlete_id,
+            SessionLog.end_time.is_not(None),
+            SessionLog.end_time >= now - timedelta(days=7),
+            SessionLog.end_time <= now,
+        )
+        return float(len(list((await self.session.execute(stmt)).scalars().all())))
+
     def _risk_level(self, score: float) -> RiskLevel:
         if score < 0.3:
             return RiskLevel.low
@@ -105,22 +139,39 @@ class RiskEngine:
         return RiskLevel.critical
 
     async def build_feature_vector(self, athlete_id: UUID) -> dict:
+        return await self.build_ml_feature_vector(athlete_id)
+
+    async def build_ml_feature_vector(self, athlete_id: UUID) -> dict:
         athlete = await self.session.get(Athlete, athlete_id)
         if not athlete:
             raise ValueError("Athlete not found")
 
         now = _utcnow()
+        sport = await self.session.get(Sport, athlete.sport_id)
         acwr = await self._latest_performance_index(athlete_id, "acwr")
         monotony = await self._latest_performance_index(athlete_id, "monotony")
+        strain = await self._latest_performance_index(athlete_id, "strain")
         recent_injury = await self._recent_injury(athlete_id, now)
         return {
             "athlete_id": str(athlete_id),
-            "acwr": acwr.value if acwr else None,
-            "monotony": monotony.value if monotony else None,
+            "sport": sport.name if sport else None,
+            "tier": athlete.tier.value,
+            "acwr": acwr.value if acwr else 0.0,
+            "acwr_7d": acwr.value if acwr else 0.0,
+            "acwr_28d": acwr.value if acwr else 0.0,
+            "monotony": monotony.value if monotony else 0.0,
+            "monotony_7d": monotony.value if monotony else 0.0,
+            "strain_7d": strain.value if strain else 0.0,
             "high_rpe_sessions_7d": await self._high_rpe_session_count(athlete_id, now),
             "recent_injury_body_part": recent_injury.body_part if recent_injury else None,
+            "prior_injury_90d": 1.0 if recent_injury else 0.0,
             "days_since_last_rest_day": await self._days_since_last_rest_day(athlete_id, now),
+            "days_since_last_rest": float(await self._days_since_last_rest_day(athlete_id, now)),
             "sleep_quality": await self._latest_sleep_quality(athlete_id),
+            "sleep_score_7d": float(await self._latest_sleep_quality(athlete_id) or 0.0),
+            "avg_rpe_7d": await self._avg_rpe(athlete_id, now, 7),
+            "avg_rpe_28d": await self._avg_rpe(athlete_id, now, 28),
+            "sessions_per_week_7d": await self._sessions_per_week(athlete_id, now),
         }
 
     async def evaluate(self, athlete_id: UUID) -> RiskEvaluation:
