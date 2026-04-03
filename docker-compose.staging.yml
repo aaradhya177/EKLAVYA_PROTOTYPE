@@ -1,0 +1,149 @@
+services:
+  api:
+    image: ${ATHLETEOS_IMAGE:-ghcr.io/local/athleteos:staging}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-staging}
+      APP_VERSION: ${APP_VERSION:-staging}
+      DB_URL: ${DB_URL}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      S3_BUCKET: ${S3_BUCKET:-athleteos}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-athleteos}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-athleteos123}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      FILE_STORAGE_PATH: ${FILE_STORAGE_PATH:-/tmp/athleteos_files}
+    ports:
+      - "8000:8000"
+    volumes:
+      - models_data:/app/models
+    depends_on:
+      - postgres
+      - minio
+      - redis
+    cpus: "1.0"
+    mem_limit: 512m
+
+  worker:
+    image: ${ATHLETEOS_IMAGE:-ghcr.io/local/athleteos:staging}
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-staging}
+      APP_VERSION: ${APP_VERSION:-staging}
+      DB_URL: ${DB_URL}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      S3_BUCKET: ${S3_BUCKET:-athleteos}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-athleteos}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-athleteos123}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      FILE_STORAGE_PATH: ${FILE_STORAGE_PATH:-/tmp/athleteos_files}
+    volumes:
+      - models_data:/app/models
+    depends_on:
+      - postgres
+      - minio
+      - redis
+    cpus: "1.0"
+    mem_limit: 256m
+
+  beat:
+    image: ${ATHLETEOS_IMAGE:-ghcr.io/local/athleteos:staging}
+    command: celery -A app.core.celery_app.celery_app beat --loglevel=info
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-staging}
+      APP_VERSION: ${APP_VERSION:-staging}
+      DB_URL: ${DB_URL}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      S3_BUCKET: ${S3_BUCKET:-athleteos}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-athleteos}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-athleteos123}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      FILE_STORAGE_PATH: ${FILE_STORAGE_PATH:-/tmp/athleteos_files}
+    volumes:
+      - models_data:/app/models
+    depends_on:
+      - postgres
+      - minio
+      - redis
+
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-athleteos}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    cpus: "2.0"
+    mem_limit: 1g
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    cpus: "0.5"
+    mem_limit: 128m
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-athleteos}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-athleteos123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio_create_bucket:
+    image: minio/mc
+    restart: unless-stopped
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-athleteos} ${MINIO_ROOT_PASSWORD:-athleteos123} &&
+      /usr/bin/mc mb --ignore-existing local/${S3_BUCKET:-athleteos}
+      "
+    profiles:
+      - "storage"
+
+  flower:
+    image: ${ATHLETEOS_IMAGE:-ghcr.io/local/athleteos:staging}
+    command: celery -A app.core.celery_app.celery_app flower --port=5555
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-staging}
+      APP_VERSION: ${APP_VERSION:-staging}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    ports:
+      - "5555:5555"
+    volumes:
+      - models_data:/app/models
+    depends_on:
+      - redis
+
+volumes:
+  models_data:
+  minio_data:
