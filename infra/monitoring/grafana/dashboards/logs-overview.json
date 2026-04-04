@@ -1,0 +1,44 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "datasource": {"type": "loki", "uid": "grafana"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [{"expr": "{job=\"docker\"} |= \"$level\" |= \"$request_id\"", "refId": "A"}],
+      "title": "Live Log Stream",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "grafana"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+      "id": 2,
+      "targets": [{"expr": "sum(count_over_time({job=\"docker\"} |= \"\\\"level\\\":\\\"error\\\"\" [5m]))", "refId": "A"}],
+      "title": "Error Rate Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "grafana"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+      "id": 3,
+      "targets": [{"expr": "sum by (container) (count_over_time({job=\"docker\"}[5m]))", "refId": "A"}],
+      "title": "Log Volume by Service",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["athleteos", "logs"],
+  "templating": {
+    "list": [
+      {"name": "level", "type": "textbox", "query": "info", "current": {"text": "", "value": ""}},
+      {"name": "request_id", "type": "textbox", "query": "", "current": {"text": "", "value": ""}}
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "Logs Overview",
+  "uid": "athleteos-logs-overview",
+  "version": 1
+}

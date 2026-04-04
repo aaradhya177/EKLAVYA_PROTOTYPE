@@ -10,6 +10,7 @@ from app.auth.models import User, UserRole
 from app.auth.schemas import LoginRequest, RegisterRequest
 from app.core.config import settings
 from app.core.redis_client import get_redis_client
+from app.core.secrets import secret_manager
 from app.uadp.models import Athlete
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -38,7 +39,7 @@ def create_token(payload: dict, expires_delta: timedelta, token_type: str) -> st
         "type": token_type,
         "jti": str(uuid4()),
     }
-    return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, secret_manager.get("JWT_SECRET_KEY"), algorithm=settings.jwt_algorithm)
 
 
 def create_access_token(user: User) -> str:
@@ -58,7 +59,7 @@ def create_refresh_token(user: User) -> str:
 
 
 def decode_token(token: str) -> dict:
-    return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    return jwt.decode(token, secret_manager.get("JWT_SECRET_KEY"), algorithms=[settings.jwt_algorithm])
 
 
 def invalidate_refresh_token(token: str) -> None:

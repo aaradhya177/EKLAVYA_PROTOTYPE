@@ -4,6 +4,7 @@ from celery.schedules import crontab
 
 from app.core import database
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from app.injury.service import compute_current_risk_score, recent_active_athlete_ids, recompute_recent_active_athletes
 from app.uadp.tasks import _run_sync
 
@@ -24,7 +25,7 @@ def daily_risk_recompute() -> int:
         async with database.AsyncSessionLocal() as session:
             athlete_ids = await recent_active_athlete_ids(session)
             updated = await recompute_recent_active_athletes(session)
-            if athlete_ids:
+            if athlete_ids and not settings.celery_task_always_eager:
                 from app.ml.tasks import score_athlete_batch
 
                 score_athlete_batch.delay([str(item) for item in athlete_ids])

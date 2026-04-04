@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable
-import os
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -21,7 +21,7 @@ from app.seed.seed import seed_database
 from app.uadp import models as uadp_models  # noqa: F401
 from app.users.models import User, UserRole
 
-TEST_DB_DIR = Path(os.environ.get("TEMP", ".")) / "athleteos-seed-tests"
+TEST_DB_DIR = Path(tempfile.gettempdir()) / "athleteos-seed-tests"
 TEST_DB_DIR.mkdir(exist_ok=True)
 
 

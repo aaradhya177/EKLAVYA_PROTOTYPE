@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -22,7 +22,7 @@ from app.uadp.models import Athlete, AthleteTier, ConsentLedger, DataCategory, S
 from app.uadp.schemas import AthleteCreate
 from app.users.models import User, UserRole
 
-TEST_DB_DIR = Path(os.environ.get("TEMP", ".")) / "athleteos-seed-tests"
+TEST_DB_DIR = Path(tempfile.gettempdir()) / "athleteos-seed-tests"
 TEST_DB_DIR.mkdir(exist_ok=True)
 
 

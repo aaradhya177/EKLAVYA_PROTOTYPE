@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.injury.engine import RiskEngine
 from app.injury.ml.predictor import InjuryMLPredictor
 from app.injury.models import InjuryRecord, RiskLevel, RiskScore
+from app.gateway.metrics import timed_prediction
 from app.ml.base import ModelRegistry
 from app.injury.schemas import InjuryRecordCreate
 from app.performance.models import SessionLog
@@ -93,7 +94,8 @@ async def compute_current_risk_score(
         predictor.load_model(model_path or Path(__file__).parent / "ml" / "injury_model.pkl")
     evaluation = await engine.evaluate(athlete_id)
     feature_vector = await engine.build_ml_feature_vector(athlete_id)
-    predicted_score = predictor.predict({**feature_vector, "_fallback_score": evaluation.score})
+    with timed_prediction("injury_risk"):
+        predicted_score = predictor.predict({**feature_vector, "_fallback_score": evaluation.score})
     score = min(max(float(predicted_score), 0.0), 1.0)
 
     risk_score = RiskScore(

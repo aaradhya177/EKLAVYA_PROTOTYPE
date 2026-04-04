@@ -1,6 +1,5 @@
 import time
 import uuid
-from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -11,13 +10,17 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.router import router as auth_router
+from app.auth.service import decode_token
 from app.career.router import router as career_router
 from app.core.config import settings
 from app.core.consent import ConsentEnforcementMiddleware
+from app.core.logging import bind_log_context, configure_logging, get_logger, reset_log_context
 from app.core.redis_client import get_redis_client
-from app.core.responses import error_response, success_response
+from app.core.responses import error_response
 from app.financial.router import router as financial_router
 from app.files.router import router as files_router
+from app.gateway.health import build_health_payload
+from app.gateway.metrics import observe_request_metrics, require_internal_metrics_access, setup_metrics
 from app.integrations.competition_feed import router as competition_feed_router
 from app.integrations.sai_sync import router as sai_sync_router
 from app.injury.router import router as injury_router
@@ -25,23 +28,69 @@ from app.ml.router import router as ml_router
 from app.performance.router import router as performance_router
 from app.uadp.router import router as uadp_router
 
+logger = get_logger(__name__)
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
         request.state.request_id = request_id
+        reset_log_context()
+        bind_log_context(request_id=request_id)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
 
 
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        started = time.perf_counter()
+        request_id = getattr(request.state, "request_id", None) or request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        request.state.request_id = request_id
+        bind_log_context(request_id=request_id)
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            try:
+                payload = decode_token(auth_header.split(" ", 1)[1])
+                bind_log_context(user_id=payload.get("sub"), athlete_id=payload.get("athlete_id"))
+            except Exception:
+                pass
+
+        if request.url.path == "/metrics":
+            require_internal_metrics_access(request)
+
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            endpoint = getattr(request.scope.get("route"), "path", request.url.path)
+            bind_log_context(endpoint=endpoint, status_code=500, duration_ms=duration_ms, error=str(exc))
+            logger.exception("request_failed")
+            observe_request_metrics(request, 500, duration_ms / 1000)
+            raise
+
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
+        endpoint = getattr(request.scope.get("route"), "path", request.url.path)
+        bind_log_context(endpoint=endpoint, status_code=response.status_code, duration_ms=duration_ms)
+        logger.info("request_completed")
+        observe_request_metrics(request, response.status_code, duration_ms / 1000)
+        return response
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in {"/health"}:
+        if request.url.path in {"/health", "/metrics"}:
             return await call_next(request)
         redis_client = get_redis_client()
         client_host = request.client.host if request.client else "anonymous"
-        identity = request.headers.get("authorization") or client_host or "anonymous"
+        identity = client_host or "anonymous"
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            try:
+                payload = decode_token(auth_header.split(" ", 1)[1])
+                identity = payload.get("sub") or payload.get("athlete_id") or identity
+            except Exception:
+                identity = client_host or "anonymous"
         bucket = int(time.time() // 60)
         key = f"ratelimit:{identity}:{bucket}"
         try:
@@ -60,8 +109,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 def create_gateway_app() -> FastAPI:
+    configure_logging()
     app = FastAPI(title=settings.app_name, version=settings.app_version)
+    setup_metrics(app)
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(ConsentEnforcementMiddleware)
     app.add_middleware(
@@ -85,41 +137,14 @@ def create_gateway_app() -> FastAPI:
     app.include_router(competition_feed_router, prefix="/api/v1/integrations")
 
     @app.get("/health")
-    async def health() -> dict[str, Any]:
-        from app.core import database
-        from app.core.celery_app import celery_app
-        from sqlalchemy import text
+    async def health() -> JSONResponse:
+        payload, status_code = await build_health_payload()
+        return JSONResponse(status_code=status_code, content=payload)
 
-        db_status = "ok"
-        redis_status = "ok"
-        celery_status = "ok"
-
-        try:
-            async with database.AsyncSessionLocal() as session:
-                await session.execute(text("SELECT 1"))
-        except Exception:
-            db_status = "error"
-
-        try:
-            get_redis_client().ping()
-        except Exception:
-            redis_status = "error"
-
-        try:
-            if not celery_app.connection().as_uri():
-                celery_status = "error"
-        except Exception:
-            celery_status = "error"
-
-        return success_response(
-            {
-                "db": db_status,
-                "redis": redis_status,
-                "celery": celery_status,
-                "version": settings.app_version,
-            },
-            "Health check fetched",
-        )
+    if settings.debug or settings.app_env == "test":
+        @app.get("/debug/sentry-test")
+        async def sentry_test() -> None:
+            raise RuntimeError("Intentional Sentry test exception")
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:

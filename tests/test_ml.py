@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import shutil
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,7 +23,7 @@ from app.ml.train_performance import train_and_register_performance_models
 from app.seed.seed import seed_database
 from app.users.models import User, UserRole
 
-TEST_DB_DIR = Path(os.environ.get("TEMP", ".")) / "athleteos-ml-tests"
+TEST_DB_DIR = Path(tempfile.gettempdir()) / "athleteos-ml-tests"
 TEST_DB_DIR.mkdir(exist_ok=True)
 
 

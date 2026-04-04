@@ -83,6 +83,76 @@ services:
     depends_on:
       - redis
 
+  celery-exporter:
+    image: danihodovic/celery-exporter:latest
+    environment:
+      CE_BROKER_URL: redis://redis:6379/1
+    ports:
+      - "9540:9540"
+    depends_on:
+      - redis
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+      - celery-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards/json
+    depends_on:
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/config.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/monitoring/loki-config.yml:/etc/loki/config.yml
+
+  promtail:
+    image: grafana/promtail:latest
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./infra/monitoring/promtail.yml:/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    volumes:
+      - ./infra/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+
+  backup:
+    build: .
+    command: /infra/backup/backup.sh
+    env_file: .env
+    profiles:
+      - "backup"
+    depends_on:
+      - postgres
+      - minio
+
   seed:
     build: .
     command: python -m app.seed.seed
@@ -95,3 +165,4 @@ services:
 volumes:
   models_data:
   minio_data:
+  grafana_data:

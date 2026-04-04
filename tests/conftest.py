@@ -1,7 +1,7 @@
 pytest_plugins = ["app.seed.conftest"]
 
 from collections.abc import AsyncGenerator
-import os
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,7 +23,7 @@ from app.performance import models as performance_models  # noqa: F401
 from app.uadp.models import Sport, SportCategory
 from app.users.models import User, UserRole
 
-TEST_DB_DIR = Path(os.environ.get("TEMP", ".")) / "athleteos-tests"
+TEST_DB_DIR = Path(tempfile.gettempdir()) / "athleteos-tests"
 TEST_DB_DIR.mkdir(exist_ok=True)
 
 

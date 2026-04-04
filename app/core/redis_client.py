@@ -64,11 +64,14 @@ def get_redis_client():
     global _client
     if _client is not None:
         return _client
+    if settings.redis_url.startswith("memory://"):
+        _client = InMemoryRedis()
+        return _client
     try:
         client = Redis.from_url(settings.redis_url, decode_responses=True)
         client.ping()
         _client = client
-    except RedisError:
+    except (RedisError, ValueError):
         _client = InMemoryRedis()
     return _client
 

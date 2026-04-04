@@ -1,0 +1,22 @@
+route:
+  receiver: slack-warnings
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: pagerduty-critical
+    - matchers:
+        - severity="warning"
+      receiver: slack-warnings
+
+receivers:
+  - name: pagerduty-critical
+    pagerduty_configs:
+      - routing_key: ${PAGERDUTY_ROUTING_KEY}
+        description: "{{ .CommonAnnotations.summary }}"
+
+  - name: slack-warnings
+    slack_configs:
+      - api_url: ${SLACK_WEBHOOK_URL}
+        channel: "#athleteos-alerts"
+        title: "{{ .CommonLabels.alertname }}"
+        text: "{{ .CommonAnnotations.summary }}"

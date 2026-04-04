@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import shutil
+import tempfile
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -20,7 +20,7 @@ from app.performance.models import SessionLog
 from app.uadp.models import EventLog
 from app.users.models import User
 
-TEST_FILE_DIR = Path(os.environ.get("TEMP", ".")) / "athleteos-file-tests"
+TEST_FILE_DIR = Path(tempfile.gettempdir()) / "athleteos-file-tests"
 TEST_FILE_DIR.mkdir(exist_ok=True)
 
 

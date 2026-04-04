@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "AthleteOS",
+    "slug": "athleteos-mobile",
+    "scheme": "athleteos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      "expo-camera"
+    ],
+    "ios": {
+      "bundleIdentifier": "in.athleteos.mobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "AthleteOS uses the camera to capture profile photos and supporting training media.",
+        "NSPhotoLibraryUsageDescription": "AthleteOS uses your photo library to update your profile and attach documents.",
+        "NSHealthShareUsageDescription": "AthleteOS reads health data to personalize recovery and readiness insights.",
+        "NSHealthUpdateUsageDescription": "AthleteOS may write wellness activity summaries with your consent."
+      }
+    },
+    "android": {
+      "package": "in.athleteos.mobile",
+      "permissions": [
+        "CAMERA",
+        "POST_NOTIFICATIONS",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "BODY_SENSORS"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "athleteos-mobile"
+      }
+    }
+  }
+}

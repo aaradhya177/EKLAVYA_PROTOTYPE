@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: AthleteOS Dashboards
+    orgId: 1
+    folder: AthleteOS
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 15
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
