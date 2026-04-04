@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-[#F1EFE8] text-[#2C2C2A];
+}
+
+* {
+  box-sizing: border-box;
+}
