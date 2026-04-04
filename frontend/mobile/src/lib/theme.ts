@@ -1,4 +1,4 @@
-import { colors, spacing } from "@shared/tokens";
+import { colors, spacing } from "../shared";
 
 export const mobileTheme = {
   colors,
